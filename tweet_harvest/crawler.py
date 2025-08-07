@@ -126,7 +126,7 @@ class TwitterCrawler:
                 pass 
         
         if newly_scraped_tweets:
-            console.print(f"[magenta]Parsed and saved {len(newly_scraped_tweets)} new tweets.[/magenta]")
+            console.print(f"[magenta]Parsed {len(newly_scraped_tweets)} new tweets.[/magenta]")
             self._write_to_csv(newly_scraped_tweets)
             log_info(f"Total tweets scraped: {len(self.all_tweets)} / {self.target_tweet_count}")
 
@@ -187,7 +187,7 @@ class TwitterCrawler:
             try:
                 console.print("[magenta]Checking for login confirmation element...[/magenta]")
                 page.wait_for_selector('[data-testid="SideNav_NewTweet_Button"]', timeout=20000)
-                log_success("✅ Login successful. Proceeding to scrape.")
+                log_success("✅ Login successfully. Proceeding to scrape.")
             except Exception:
                 log_error("Login failed. The auth_token may be invalid or expired.")
                 browser.close()
@@ -204,7 +204,7 @@ class TwitterCrawler:
             
             page.on("response", self._handle_response)
             
-            console.print("[bold cyan]--- Start continuous scrolling loop ---[/bold cyan]")
+            console.print("[bold cyan]--- Start continuous scrolling ---[/bold cyan]")
             
             consecutive_scrolls_with_no_new_tweets = 0
             MAX_NO_NEW_TWEETS_SCROLLS = 5
