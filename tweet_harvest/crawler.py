@@ -199,7 +199,7 @@ class TwitterCrawler:
             else: # USER mode
                 target_url = f"https://x.com/{self.from_user}"
 
-            console.print(f"[magenta]Checking to target URL: [link={target_url}]{target_url}[/link][/magenta]")
+            console.print(f"[magenta]Testing to target URL: [link={target_url}]{target_url}[/link][/magenta]")
             page.goto(target_url, wait_until="domcontentloaded")
             
             page.on("response", self._handle_response)
