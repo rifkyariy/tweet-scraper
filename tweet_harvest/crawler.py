@@ -204,7 +204,7 @@ class TwitterCrawler:
             
             page.on("response", self._handle_response)
             
-            console.print("[bold cyan]--- Start continuous scrolling loop ---[/bold cyan]")
+            console.print("[bold cyan]--- Start continuous scrolling ---[/bold cyan]")
             
             consecutive_scrolls_with_no_new_tweets = 0
             MAX_NO_NEW_TWEETS_SCROLLS = 5
