@@ -1,0 +1,56 @@
+name: Copilot PR Review and Slack Notification
+
+on:
+  pull_request:
+    types: [opened, synchronize] # Triggers on new PRs and new commits to existing PRs
+
+# These permissions are required for the action to read code and write comments to the PR
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  copilot-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Review PR with GitHub Copilot
+        # This step uses the GitHub CLI, which is pre-installed on runners.
+        # It installs the Copilot extension and runs the 'suggest' command.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # The token is automatically provided by GitHub
+        run: |
+          gh extension install github/gh-copilot --force
+          gh copilot suggest > copilot_review.md
+
+      - name: Create Comment on PR with Copilot Review
+        # This step takes the output from the previous step and posts it as a PR comment.
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const review = fs.readFileSync('copilot_review.md', 'utf8');
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `### 🤖 GitHub Copilot Analysis\n\n${review}`
+            });
+
+  slack-notification:
+    # This job will only run after the 'copilot-review' job has successfully completed
+    needs: copilot-review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack Notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_USERNAME: "GitHub Actions"
+          SLACK_TITLE: "New Pull Request Ready for Review"
+          SLACK_MESSAGE: |
+            A new pull request by *@${{ github.actor }}* is open and has been analyzed by Copilot.
+            *<${{ github.event.pull_request.html_url }}|View Pull Request>*
+          SLACK_COLOR: '#007ec6'
