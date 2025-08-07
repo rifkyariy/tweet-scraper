@@ -126,7 +126,7 @@ class TwitterCrawler:
                 pass 
         
         if newly_scraped_tweets:
-            console.print(f"[magenta]Parsed and saved {len(newly_scraped_tweets)} new tweets.[/magenta]")
+            console.print(f"[magenta]Parsed {len(newly_scraped_tweets)} new tweets.[/magenta]")
             self._write_to_csv(newly_scraped_tweets)
             log_info(f"Total tweets scraped: {len(self.all_tweets)} / {self.target_tweet_count}")
 
