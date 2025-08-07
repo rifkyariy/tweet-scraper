@@ -19,10 +19,9 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "/repos/$GH_REPO/pulls/$PR_NUMBER/requested_reviewers" \
-            -f reviewers='["copilot-pull-request-reviewer"]'
+            -f reviewers[]=copilot-pull-request-reviewer
 
   slack-notification:
-    # This job runs in parallel with the review request
     runs-on: ubuntu-latest
     steps:
       - name: Send Slack Notification
