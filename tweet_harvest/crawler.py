@@ -187,7 +187,7 @@ class TwitterCrawler:
             try:
                 console.print("[magenta]Checking for login confirmation element...[/magenta]")
                 page.wait_for_selector('[data-testid="SideNav_NewTweet_Button"]', timeout=20000)
-                log_success("✅ Login successful. Proceeding to scrape.")
+                log_success("✅ Login successfully. Proceeding to scrape.")
             except Exception:
                 log_error("Login failed. The auth_token may be invalid or expired.")
                 browser.close()
