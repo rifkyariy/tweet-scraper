@@ -4,14 +4,16 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+# This permissions block is the key to fixing the error.
+# It grants the token the ability to use the Copilot API.
 permissions:
   pull-requests: write
   contents: read
+  copilot: write  # <-- ADD THIS LINE
 
 jobs:
   copilot-review:
     runs-on: ubuntu-latest
-    # This 'outputs' block makes the result of the job available to other jobs
     outputs:
       outcome: ${{ steps.check_review.outputs.conclusion }}
     steps:
@@ -20,7 +22,7 @@ jobs:
 
       - name: Review PR with GitHub Copilot
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token will now have the right permissions
         run: |
           gh extension install github/gh-copilot --force
           gh copilot suggest > copilot_review.md
@@ -31,7 +33,6 @@ jobs:
           script: |
             const fs = require('fs');
             const review = fs.readFileSync('copilot_review.md', 'utf8');
-            // Only post a comment if there is something to say
             if (review.trim().length > 0) {
               github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -42,10 +43,8 @@ jobs:
             }
 
       - name: Check Copilot Review Output
-        # This step checks if the review file is basically empty or has suggestions
         id: check_review
         run: |
-          # If the review file is smaller than 50 bytes, we assume no suggestions were made.
           if [ $(wc -c < copilot_review.md) -lt 50 ]; then
             echo "conclusion=success" >> $GITHUB_OUTPUT
           else
@@ -53,11 +52,10 @@ jobs:
           fi
 
   slack-notification:
-    needs: copilot-review # Depends on the review job
+    needs: copilot-review
     runs-on: ubuntu-latest
     steps:
       - name: Send 'Approved' Slack Notification
-        # This step runs ONLY if the 'outcome' from the previous job was 'success'
         if: needs.copilot-review.outputs.outcome == 'success'
         uses: rtCamp/action-slack-notify@v2
         env:
@@ -66,10 +64,9 @@ jobs:
           SLACK_MESSAGE: |
             PR by *@${{ github.actor }}* looks good! Copilot found no issues.
             *<${{ github.event.pull_request.html_url }}|Review and Merge>*
-          SLACK_COLOR: '#28a745' # Green
+          SLACK_COLOR: '#28a745'
 
       - name: Send 'Suggestions Found' Slack Notification
-        # This step runs ONLY if the 'outcome' from the previous job was 'failure'
         if: needs.copilot-review.outputs.outcome == 'failure'
         uses: rtCamp/action-slack-notify@v2
         env:
@@ -78,4 +75,4 @@ jobs:
           SLACK_MESSAGE: |
             Copilot has suggestions for the PR by *@${{ github.actor }}*.
             *<${{ github.event.pull_request.html_url }}|View PR and Review Comments>*
-          SLACK_COLOR: '#dc3545' # Red
+          SLACK_COLOR: '#dc3545'
