@@ -46,7 +46,7 @@ class TwitterCrawler:
         
         self.all_tweets = []
         self.rate_limit_attempts = 0
-        console.print(f"📝 Output file will be: [bold cyan]{self.filepath}[/]", justify="center")
+        console.print(f"📝 Out file will be: [bold cyan]{self.filepath}[/]", justify="center")
         if self.lang_filter:
             console.print(f"🌐 Filtering for language: [bold yellow]{self.lang_filter}[/bold yellow]")
 
