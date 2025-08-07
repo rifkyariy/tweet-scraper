@@ -53,7 +53,7 @@ class TwitterCrawler:
 
     def _build_search_query(self) -> str:
         """Builds the search query string for the URL."""
-        console.print("[magenta]Building search query...[/magenta]")
+        console.print("[magenta]Init search query...[/magenta]")
         query = self.search_keywords
         if self.from_date:
             query += f" since:{self.from_date}"
