@@ -1,78 +1,36 @@
-name: Copilot PR Review and Conditional Slack Notification
+name: Request PR Review and Notify Slack
 
 on:
   pull_request:
-    types: [opened, synchronize]
-
-# This permissions block is the key to fixing the error.
-# It grants the token the ability to use the Copilot API.
-permissions:
-  pull-requests: write
-  contents: read
-  copilot: write  # <-- ADD THIS LINE
+    types: [opened]
 
 jobs:
-  copilot-review:
+  request-copilot-review:
     runs-on: ubuntu-latest
-    outputs:
-      outcome: ${{ steps.check_review.outputs.conclusion }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Review PR with GitHub Copilot
+      - name: Request review from Copilot
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token will now have the right permissions
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh extension install github/gh-copilot --force
-          gh copilot suggest > copilot_review.md
-
-      - name: Create Comment on PR with Copilot Review
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const review = fs.readFileSync('copilot_review.md', 'utf8');
-            if (review.trim().length > 0) {
-              github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: `### 🤖 GitHub Copilot Analysis\n\n${review}`
-              });
-            }
-
-      - name: Check Copilot Review Output
-        id: check_review
-        run: |
-          if [ $(wc -c < copilot_review.md) -lt 50 ]; then
-            echo "conclusion=success" >> $GITHUB_OUTPUT
-          else
-            echo "conclusion=failure" >> $GITHUB_OUTPUT
-          fi
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/$GH_REPO/pulls/$PR_NUMBER/requested_reviewers" \
+            -f reviewers='["copilot-pull-request-reviewer"]'
 
   slack-notification:
-    needs: copilot-review
+    # This job runs in parallel with the review request
     runs-on: ubuntu-latest
     steps:
-      - name: Send 'Approved' Slack Notification
-        if: needs.copilot-review.outputs.outcome == 'success'
+      - name: Send Slack Notification
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_TITLE: "✅ PR Approved by Copilot"
+          SLACK_TITLE: "🚀 New Pull Request"
           SLACK_MESSAGE: |
-            PR by *@${{ github.actor }}* looks good! Copilot found no issues.
-            *<${{ github.event.pull_request.html_url }}|Review and Merge>*
-          SLACK_COLOR: '#28a745'
-
-      - name: Send 'Suggestions Found' Slack Notification
-        if: needs.copilot-review.outputs.outcome == 'failure'
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_TITLE: "⚠️ Suggestions Found in PR"
-          SLACK_MESSAGE: |
-            Copilot has suggestions for the PR by *@${{ github.actor }}*.
-            *<${{ github.event.pull_request.html_url }}|View PR and Review Comments>*
-          SLACK_COLOR: '#dc3545'
+            A new PR was opened by *@${{ github.actor }}* and a review was requested from Copilot.
+            *<${{ github.event.pull_request.html_url }}|View Pull Request>*
+          SLACK_COLOR: '#007ec6'
