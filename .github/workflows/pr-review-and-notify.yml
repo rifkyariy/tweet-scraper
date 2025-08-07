@@ -10,7 +10,10 @@ jobs:
     steps:
       - name: Request review from Copilot
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          # Menggunakan secret token classic yang baru Anda buat
+          GH_TOKEN: ${{ secrets.GH_PAT_CLASSIC }}
+          
+          # Variabel ini diambil secara otomatis oleh GitHub Actions
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
