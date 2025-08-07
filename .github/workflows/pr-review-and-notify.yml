@@ -1,10 +1,9 @@
-name: Copilot PR Review and Slack Notification
+name: Copilot PR Review and Conditional Slack Notification
 
 on:
   pull_request:
-    types: [opened, synchronize] # Triggers on new PRs and new commits to existing PRs
+    types: [opened, synchronize]
 
-# These permissions are required for the action to read code and write comments to the PR
 permissions:
   pull-requests: write
   contents: read
@@ -12,45 +11,71 @@ permissions:
 jobs:
   copilot-review:
     runs-on: ubuntu-latest
+    # This 'outputs' block makes the result of the job available to other jobs
+    outputs:
+      outcome: ${{ steps.check_review.outputs.conclusion }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Review PR with GitHub Copilot
-        # This step uses the GitHub CLI, which is pre-installed on runners.
-        # It installs the Copilot extension and runs the 'suggest' command.
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # The token is automatically provided by GitHub
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh extension install github/gh-copilot --force
           gh copilot suggest > copilot_review.md
 
       - name: Create Comment on PR with Copilot Review
-        # This step takes the output from the previous step and posts it as a PR comment.
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const review = fs.readFileSync('copilot_review.md', 'utf8');
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `### 🤖 GitHub Copilot Analysis\n\n${review}`
-            });
+            // Only post a comment if there is something to say
+            if (review.trim().length > 0) {
+              github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `### 🤖 GitHub Copilot Analysis\n\n${review}`
+              });
+            }
+
+      - name: Check Copilot Review Output
+        # This step checks if the review file is basically empty or has suggestions
+        id: check_review
+        run: |
+          # If the review file is smaller than 50 bytes, we assume no suggestions were made.
+          if [ $(wc -c < copilot_review.md) -lt 50 ]; then
+            echo "conclusion=success" >> $GITHUB_OUTPUT
+          else
+            echo "conclusion=failure" >> $GITHUB_OUTPUT
+          fi
 
   slack-notification:
-    # This job will only run after the 'copilot-review' job has successfully completed
-    needs: copilot-review
+    needs: copilot-review # Depends on the review job
     runs-on: ubuntu-latest
     steps:
-      - name: Send Slack Notification
+      - name: Send 'Approved' Slack Notification
+        # This step runs ONLY if the 'outcome' from the previous job was 'success'
+        if: needs.copilot-review.outputs.outcome == 'success'
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_USERNAME: "GitHub Actions"
-          SLACK_TITLE: "New Pull Request Ready for Review"
+          SLACK_TITLE: "✅ PR Approved by Copilot"
           SLACK_MESSAGE: |
-            A new pull request by *@${{ github.actor }}* is open and has been analyzed by Copilot.
-            *<${{ github.event.pull_request.html_url }}|View Pull Request>*
-          SLACK_COLOR: '#007ec6'
+            PR by *@${{ github.actor }}* looks good! Copilot found no issues.
+            *<${{ github.event.pull_request.html_url }}|Review and Merge>*
+          SLACK_COLOR: '#28a745' # Green
+
+      - name: Send 'Suggestions Found' Slack Notification
+        # This step runs ONLY if the 'outcome' from the previous job was 'failure'
+        if: needs.copilot-review.outputs.outcome == 'failure'
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_TITLE: "⚠️ Suggestions Found in PR"
+          SLACK_MESSAGE: |
+            Copilot has suggestions for the PR by *@${{ github.actor }}*.
+            *<${{ github.event.pull_request.html_url }}|View PR and Review Comments>*
+          SLACK_COLOR: '#dc3545' # Red
