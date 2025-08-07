@@ -1,0 +1,5 @@
+playwright==1.54.0
+rich==13.7.0
+python-dotenv==1.0.1
+pydantic==2.5.3
+questionary==2.0.1

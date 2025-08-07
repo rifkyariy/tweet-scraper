@@ -1,0 +1,11 @@
+[project]
+name = "tweet-harvest"
+version = "1.0.0"
+description = "A Python Twitter crawler helper with auth"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [{ name = "Your Name", email = "you@example.com" }]
+
+[project.scripts]
+tweet-harvest = "tweet_harvest.cli:main"
